@@ -5,7 +5,7 @@ This Telegram bot application is designed to perform several tasks, including mo
 ## Components
 
 ### `main.go`
-The `main.go` file is the core of the application, responsible for handling Telegram updates, forwarding messages to a specified channel, saving them to the database, and and sending daily email summaries. It utilizes the Telegram Bot API, connects to a PostgreSQL database, and communicates with the plagiarism checker microservice.
+The `main.go` file is the core of the application, responsible for handling Telegram updates, forwarding messages to a specified channel, saving them to the database, and sending daily email summaries. It utilizes the Telegram Bot API, connects to a PostgreSQL database, and communicates with the plagiarism checker microservice.
 
 ### `plagiarism_checker.go`
 The `plagiarism_checker.go` file implements the plagiarism checker microservice. It calculates Jaccard similarity coefficients between new and existing texts in the database to identify potential plagiarism. The microservice is accessed by the main application through gRPC.
