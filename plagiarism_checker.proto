@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package plagiarism_checker;
+
+option go_package = "runo/plagiarism_checker";
+
+service PlagiarismChecker {
+    rpc CheckPlagiarism (CheckPlagiarismRequest) returns (CheckPlagiarismResponse);
+}
+
+message CheckPlagiarismRequest {
+    string message_text = 1;
+}
+
+message CheckPlagiarismResponse {
+    bool is_plagiarized = 1;
+    float similarity = 2;
+}
