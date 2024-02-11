@@ -1,8 +1,7 @@
 # Tasks and Components
 
 ## 1. Message Handling and Forwarding
-The bot monitors messages in a specified Telegram channel.
-Text messages are forwarded to another channel, while media messages with captions are redirected to the same channel.
+The bot monitors messages in a specified Telegram channel and then forwarded them another channel, (text and media messages with captions).
 
 ## 2. Database Interaction
 Utilizing a PostgreSQL database, the bot stores essential information about forwarded messages. The database schema includes a "messages" table with fields such as message text, timestamp, channel username, and message URL.
