@@ -31,17 +31,18 @@ The bot's deployment and orchestration are handled through Kubernetes. Deploymen
 ## 10. AWS
 For cloud deployment, the bot is integrated with Amazon Elastic Kubernetes Service (EKS). This integration facilitates seamless scaling, efficient resource utilization, and robust performance in an AWS environment.
 
+
 ### Configuration
 Configuration parameters, including the Telegram bot token, database connection string, plagiarism checker address, etc., are centralized in the `config` package for easy access and modification.
 
 ### Deployment in Videos
 
 - **Docker:**
-  [![Docker](https://youtu.be/JWK47EQJLQM)](https://youtu.be/JWK47EQJLQM)
+  [![Docker]](https://youtu.be/JWK47EQJLQM)
 
 - **Kubernetes:**
-  [![Kubernetes](https://youtu.be/n2quIJnFLlk)](https://youtu.be/n2quIJnFLlk)
+  [![Kubernetes]](https://youtu.be/n2quIJnFLlk)
 
 - **AWS:**
-  [![AWS1](https://youtu.be/32rkJt0_cI4)](https://youtu.be/32rkJt0_cI4)
-  [![AWS2](https://youtu.be/-942zhizHug)](https://youtu.be/-942zhizHug)
+  [![AWS1]](https://youtu.be/32rkJt0_cI4)
+  [![AWS2]](https://youtu.be/-942zhizHug)
