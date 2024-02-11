@@ -9,7 +9,6 @@ import (
 
 var smtpSendMail func(addr string, a smtp.Auth, from string, to []string, msg []byte) error
 
-// mockSMTP is a simple mock for the smtp.SendMail function.
 type mockSMTP struct {
 	sentMail chan struct {
 		from, to, subject, body string
@@ -51,11 +50,9 @@ func TestSendEmail(t *testing.T) {
 		from, to, subject, body string
 	}, 1)}
 
-	// Replace the smtp.SendMail function with the mock.
 	smtpSendMail = mock.SendMail
 	defer func() { smtpSendMail = smtp.SendMail }()
 
-	// Your actual email sending test here.
 	subject := "Test Subject"
 	body := "Test Body"
 
@@ -64,7 +61,6 @@ func TestSendEmail(t *testing.T) {
 		t.Fatalf("Error sending email: %v", err)
 	}
 
-	// Check the sent email details.
 	sentEmail := <-mock.sentMail
 	if sentEmail.subject != subject {
 		t.Errorf("Expected subject %q, got %q", subject, sentEmail.subject)
