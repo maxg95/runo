@@ -38,10 +38,10 @@ Configuration parameters, including the Telegram bot token, database connection 
 ### Deployment in Videos
 
 - **Docker:**
-  [![Docker]](https://youtu.be/JWK47EQJLQM)
+  https://youtu.be/JWK47EQJLQM
 
 - **Kubernetes:**
-  [![Kubernetes]](https://youtu.be/n2quIJnFLlk)
+  https://youtu.be/n2quIJnFLlk
 
 - **AWS:**
   https://youtu.be/32rkJt0_cI4
