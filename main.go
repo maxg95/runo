@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
+	"net/http"
 	"net/smtp"
 	"sync"
 	"time"
@@ -17,7 +20,66 @@ import (
 	_ "github.com/lib/pq"
 
 	"runo/config"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/gorilla/mux"
 )
+
+type Message struct {
+	ID              int
+	MessageText     string
+	Timestamp       time.Time
+	ChannelUsername string
+	MessageURL      string
+}
+
+func (m Message) TimestampFormat() string {
+	return m.Timestamp.Format("02.01.2006 в 15:04:05")
+}
+
+func getMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	db, err := sql.Open("postgres", config.DBConnStr)
+	if err != nil {
+		log.Println("Error connecting to the database:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id, message_text, timestamp, channel_username, message_url FROM messages")
+	if err != nil {
+		log.Println("Error fetching messages from the database:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var message Message
+		err := rows.Scan(&message.ID, &message.MessageText, &message.Timestamp, &message.ChannelUsername, &message.MessageURL)
+		if err != nil {
+			log.Println("Error scanning rows:", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		messages = append(messages, message)
+	}
+
+	tmpl, err := template.ParseFiles("template.html")
+	if err != nil {
+		log.Println("Error parsing template:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err = tmpl.Execute(w, messages)
+	if err != nil {
+		log.Println("Error executing template:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
 
 // Sending email task Part 1.
 func sendEmail(subject, body string) error {
@@ -78,6 +140,16 @@ func main() {
 		log.Fatal("Error creating table:", err)
 	}
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "172.17.0.3:6379",
+		Password: "",
+		DB:       0,
+	})
+	defer redisClient.Close()
+
+	pubsub := redisClient.Subscribe(context.Background(), "plagiarism_channel")
+	defer pubsub.Close()
+
 	// Set up a gRPC connection to the plagiarism_checker microservice.
 	plagiarismCheckerConn, err := grpc.Dial(config.PlagiarismCheckerAddress, grpc.WithInsecure())
 	if err != nil {
@@ -124,17 +196,29 @@ func main() {
 						MessageText: update.ChannelPost.Text,
 					}
 
-					fmt.Println("Sending plagiarism check request:", update.ChannelPost.Text)
-					plagiarismResponse, err := plagiarismCheckerClient.CheckPlagiarism(context.Background(), checkPlagiarismRequest)
-					if err != nil {
-						log.Println("Error checking plagiarism:", err)
-					} else if plagiarismResponse.IsPlagiarized {
-						log.Println("Plagiarism detected! Deleting message.")
-						_, err := db.Exec("DELETE FROM messages WHERE message_text = $1", update.ChannelPost.Text)
+					go func() {
+						// Publish to Redis
+						_, err := redisClient.Publish(context.Background(), "plagiarism_channel", update.ChannelPost.Text).Result()
 						if err != nil {
-							log.Println("Error deleting message from the database:", err)
+							log.Println("Error publishing message to plagiarism_channel:", err)
 						}
-					}
+
+						// Perform plagiarism check
+						fmt.Println("Sending plagiarism check request:", update.ChannelPost.Text)
+						plagiarismResponse, err := plagiarismCheckerClient.CheckPlagiarism(context.Background(), checkPlagiarismRequest)
+						if err != nil {
+							log.Println("Error checking plagiarism:", err)
+							return
+						}
+
+						if plagiarismResponse.IsPlagiarized {
+							log.Println("Plagiarism detected! Deleting message.")
+							_, err := db.Exec("DELETE FROM messages WHERE message_text = $1", update.ChannelPost.Text)
+							if err != nil {
+								log.Println("Error deleting message from the database:", err)
+							}
+						}
+					}()
 				} else if update.ChannelPost.Caption != "" {
 					// Handle media messages with captions (like photos, videos, etc.).
 					// And redirect the caption to chat.
@@ -216,6 +300,32 @@ func main() {
 		}
 	}()
 
+	mux := mux.NewRouter()
+	// Define API routes
+	mux.HandleFunc("/", getMessagesHandler)
+	// Serve static files
+	mux.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("."))))
+
+	// Start the HTTPS server
+	go func() {
+		tlsConfig := &tls.Config{
+			CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+		}
+
+		srv := &http.Server{
+			Addr:        ":9999",
+			Handler:     mux,
+			TLSConfig:   tlsConfig,
+			IdleTimeout: time.Minute,
+			ReadTimeout: 5 * time.Second,
+		}
+
+		log.Print("Starting server...")
+
+		err := srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
+		log.Fatal(err)
+	}()
+
 	// Wait for all Goroutines to finish before exiting.
 	wg.Wait()
 
@@ -233,10 +343,37 @@ func main() {
 		if err != nil {
 			log.Println("Error scanning rows:", err)
 		}
+		cacheKey := fmt.Sprintf("message:%s", messageText)
+		cachedMessage, err := redisClient.Get(context.Background(), cacheKey).Result()
+		if err == nil {
+			log.Printf("Cached Message: %s", cachedMessage)
+		} else {
+			log.Printf("Caching Message: %s", messageText)
+			redisClient.Set(context.Background(), cacheKey, messageText, time.Duration(5*time.Minute))
+		}
+		logEntryKey := fmt.Sprintf("log:%s", time.Now().UTC().Format(time.RFC3339Nano))
+		logEntry := fmt.Sprintf("Message: %s, Timestamp: %s, Channel: %s, URL: %s", messageText, timestamp, channelUsername, messageURL)
+		redisClient.Set(context.Background(), logEntryKey, logEntry, 0)
+
 		// Process the fetched data.
 		log.Printf("Message: %s, Timestamp: %s, Channel: %s, URL: %s", messageText, timestamp, channelUsername, messageURL)
 	}
 	if err := rows.Err(); err != nil {
 		log.Println("Error iterating rows:", err)
+	}
+	// Fetch logs from Redis
+	logKeys, err := redisClient.Keys(context.Background(), "log:*").Result()
+	if err != nil {
+		log.Println("Error fetching log keys from Redis:", err)
+	}
+
+	// Process fetched logs
+	for _, logKey := range logKeys {
+		logEntry, err := redisClient.Get(context.Background(), logKey).Result()
+		if err != nil {
+			log.Println("Error fetching log entry from Redis:", err)
+			continue
+		}
+		log.Printf("Retrieved Log: %s", logEntry)
 	}
 }

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Золоте руно</title>
+    <style>
+        body {
+            font-family: 'Helvetica', sans-serif;
+            margin: 20px;
+            background-color: #000;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #ffffff;
+            border-bottom: 2px solid #ffffff;
+            padding-bottom: 10px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .search-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input[type=text] {
+            padding: 10px;
+            width: 50%;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            box-sizing: border-box;
+            color: #141515;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #000;
+            color: #ffffff;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 90%;
+            margin: 0 auto;
+            border: 1px solid #00ff00;
+            border-radius: 10px;
+            overflow: hidden;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        th, td {
+            border: 1px solid #00ff00;
+            padding: 15px;
+            text-align: left;
+            transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
+        }
+
+        th {
+            background-color: #000;
+            color: #fff;
+            border: 1px solid #000;
+            border-bottom: 2px solid #000;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 16px;
+        }
+
+        td {
+            background-color: #000;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background-color: #e9ecef;
+            transform: scale(1.02);
+        }
+
+        a {
+            color: #ffffff;
+            text-decoration: none;
+            transition: color 0.3s ease-in-out;
+        }
+
+        a:hover {
+            color: #00ff00;
+            text-decoration: underline;
+        }
+
+        .highlight {
+            background-color: #00ff00;
+            font-weight: bold;
+        }
+
+        @media screen and (max-width: 600px) {
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+
+            input[type=text] {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 onclick="redirectToHomepage()">Золоте руно</h1>
+    
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Пошук...">
+        <button onclick="searchMessages()">Пошук</button>
+    </div>
+
+    <p style="text-align: center; color: #ffffff; font-size: 16px;">Кількість повідомлень: <span id="messageCount">{{len .}}</span></p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Повідомлення</th>
+                <th>Час</th>
+                <th>Лінк</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .}}
+            <tr>
+                <td>{{.ID}}</td>
+                <td>{{.MessageText}}</td>
+                <td>{{.TimestampFormat}}</td>
+                <td><a href="{{.MessageURL}}" target="_blank">{{.MessageURL}}</a></td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    <script>
+        function searchMessages() {
+            var input = document.getElementById('searchInput');
+            var filter = input.value.toUpperCase();
+
+            var table = document.querySelector('table');
+            var rows = table.getElementsByTagName('tr');
+
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName('td');
+                var display = false;
+
+                for (var j = 0; j < cells.length; j++) {
+                    var cellText = cells[j].textContent || cells[j].innerText;
+                    var cellContent = cellText;
+                    
+                    if (cellText.toUpperCase().indexOf(filter) > -1) {
+                        display = true;
+                        cellContent = cellText.replace(new RegExp(filter, 'gi'), function(match) {
+                            return '<span class="highlight">' + match + '</span>';
+                        });
+                    }
+
+                    cells[j].innerHTML = cellContent;
+                }
+
+                rows[i].style.display = display ? '' : 'none';
+            }
+        }
+
+        function redirectToHomepage() {
+            window.location.href = "/";
+        }
+
+        var searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                searchMessages();
+            }
+        });
+    </script>
+    
+</body>
+</html>

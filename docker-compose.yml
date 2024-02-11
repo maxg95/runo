@@ -1,0 +1,25 @@
+version: '3'
+services:
+  main:
+    build:
+      context: .
+    ports:
+      - "50051:50051"
+      - "9999:9999"
+    depends_on:
+      - redis
+    networks:
+      - mynetwork
+    volumes:
+      - ./:/app
+      
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+  

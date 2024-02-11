@@ -15,6 +15,8 @@ import (
 	_ "github.com/lib/pq"
 
 	"runo/config"
+
+	"github.com/go-redis/redis/v8"
 )
 
 const similarityThreshold = 0.3
@@ -24,21 +26,35 @@ type plagiarismCheckerServer struct {
 }
 
 func (s *plagiarismCheckerServer) CheckPlagiarism(ctx context.Context, req *pb.CheckPlagiarismRequest) (*pb.CheckPlagiarismResponse, error) {
-	// Connect to the PostgreSQL database.
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "172.17.0.3:6379",
+		Password: "",
+		DB:       0,
+	})
+	defer redisClient.Close()
+
+	pubsub := redisClient.Subscribe(context.Background(), "plagiarism_channel")
+	defer pubsub.Close()
+
+	msg, err := pubsub.ReceiveMessage(context.Background())
+	if err != nil {
+		log.Println("Error receiving message from plagiarism_channel:", err)
+	} else {
+		log.Printf("Received message from plagiarism_channel: %s", msg.Payload)
+	}
+
 	db, err := sql.Open("postgres", config.DBConnStr)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	// Query the database to fetch texts of messages.
 	rows, err := db.Query("SELECT message_text FROM messages")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	// Process the fetched rows and store the texts in a slice.
 	existingTexts := make([]string, 0)
 	for rows.Next() {
 		var existingText string
@@ -50,7 +66,6 @@ func (s *plagiarismCheckerServer) CheckPlagiarism(ctx context.Context, req *pb.C
 		existingTexts = append(existingTexts, existingText)
 	}
 
-	// Calculate the Jaccard similarity coefficient between the new text and the existing texts.
 	newText := strings.Fields(req.GetMessageText())
 	fmt.Println("newText:", newText)
 	for _, existingText := range existingTexts {
