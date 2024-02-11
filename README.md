@@ -44,5 +44,5 @@ Configuration parameters, including the Telegram bot token, database connection 
   [![Kubernetes]](https://youtu.be/n2quIJnFLlk)
 
 - **AWS:**
-  [![AWS1]](https://youtu.be/32rkJt0_cI4)
-  [![AWS2]](https://youtu.be/-942zhizHug)
+  https://youtu.be/32rkJt0_cI4
+  https://youtu.be/-942zhizHug
