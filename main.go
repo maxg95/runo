@@ -87,7 +87,7 @@ func sendEmail(subject, body string) error {
 	password := config.MailPassword
 	to := config.MailTo
 
-	log.Println("Preparing to send email...")
+	log.Println("Preparing to send email")
 
 	msg := "From: " + from + "\n" +
 		"To: " + to + "\n" +
